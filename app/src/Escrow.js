@@ -1,13 +1,45 @@
+import { useEffect, useState } from "react";
+
 export default function Escrow({
+  isApproved,
   address,
   arbiter,
   beneficiary,
   value,
   handleApprove,
+  sender,
+  chainId,
 }) {
+  const [errMsg, setErrMsg] = useState("");
+
+  const approve = async () => {
+    try {
+      setErrMsg("");
+      handleApprove();
+    } catch (err) {
+      console.error(err);
+      setErrMsg(err.msg);
+    }
+  };
+
+  useEffect(() => {
+    const escrowEl = document.getElementById(address);
+    if (isApproved && escrowEl) {
+      escrowEl.className = "complete";
+    }
+  });
+
   return (
     <div className="existing-contract">
       <ul className="fields">
+        <li>
+          <div> Chain ID </div>
+          <div> {chainId} </div>
+        </li>
+        <li>
+          <div> Sender </div>
+          <div> {sender} </div>
+        </li>
         <li>
           <div> Arbiter </div>
           <div> {arbiter} </div>
@@ -18,19 +50,21 @@ export default function Escrow({
         </li>
         <li>
           <div> Value </div>
-          <div> {value} </div>
+          <div> {value} ETH </div>
         </li>
+
         <div
           className="button"
           id={address}
           onClick={(e) => {
             e.preventDefault();
 
-            handleApprove();
+            approve();
           }}
         >
-          Approve
+          {isApproved ? "✓ It's been approved!" : "Approve"}
         </div>
+        {errMsg && <div>{errMsg}</div>}
       </ul>
     </div>
   );

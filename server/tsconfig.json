@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "declaration": true,
+    "baseUrl": ".",
+    "useUnknownInCatchVariables": false,
+    "paths": {
+      "@root/*": [
+        "../*"
+      ]
+    },
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ],
+  },
+}

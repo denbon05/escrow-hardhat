@@ -1,75 +1,92 @@
-import { ethers } from 'ethers';
-import { useEffect, useState } from 'react';
-import deploy from './deploy';
-import Escrow from './Escrow';
-
-const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-export async function approve(escrowContract, signer) {
-  const approveTxn = await escrowContract.connect(signer).approve();
-  await approveTxn.wait();
-}
+import { ethers } from "ethers";
+import { useEffect, useState } from "react";
+import Escrow from "./Escrow";
+import { addEscrow, fetchEscrows, deploy } from "./api/escrows";
+import { provider } from "./api/eth";
 
 function App() {
   const [escrows, setEscrows] = useState([]);
-  const [account, setAccount] = useState();
-  const [signer, setSigner] = useState();
+  const [account, setAccount] = useState(null);
+  const [chainId, setChainId] = useState(null);
+  const [errMsg, setErrMsg] = useState();
 
   useEffect(() => {
-    async function getAccounts() {
-      const accounts = await provider.send('eth_requestAccounts', []);
-
-      setAccount(accounts[0]);
-      setSigner(provider.getSigner());
+    const connectToWallet = async () => {
+      const accounts = await provider.send('eth_requestAccounts', [])
+      const [firstAccount] = accounts;
+      if (!accounts.length) {
+        setErrMsg('Please connect to a Wallet')
+        console.warn('There are no accounts')
+      } else if (firstAccount !== account) {
+        setAccount(firstAccount)
+      }
+      const chainId = await provider.send('eth_chainId', []);
+      setChainId(chainId);
     }
 
-    getAccounts();
+    connectToWallet()
+      .then(fetchEscrows)
+      .then(setEscrows);
   }, [account]);
 
   async function newContract() {
-    const beneficiary = document.getElementById('beneficiary').value;
-    const arbiter = document.getElementById('arbiter').value;
-    const value = ethers.BigNumber.from(document.getElementById('wei').value);
-    const escrowContract = await deploy(signer, arbiter, beneficiary, value);
+    setErrMsg("");
+    const beneficiary = document.getElementById("beneficiary").value;
+    const arbiter = document.getElementById("arbiter").value;
+    const value = ethers.utils.parseEther(document.getElementById("eth").value);
 
-
-    const escrow = {
-      address: escrowContract.address,
-      arbiter,
-      beneficiary,
-      value: value.toString(),
-      handleApprove: async () => {
-        escrowContract.on('Approved', () => {
-          document.getElementById(escrowContract.address).className =
-            'complete';
-          document.getElementById(escrowContract.address).innerText =
-            "✓ It's been approved!";
-        });
-
-        await approve(escrowContract, signer);
-      },
-    };
-
-    setEscrows([...escrows, escrow]);
+    try {
+      const escrowContract = await deploy({
+        arbiter,
+        beneficiary,
+        value,
+      });
+      await addEscrow({
+        address: escrowContract.address,
+        arbiter,
+        beneficiary,
+        deposit: value.toHexString(),
+        sender: account,
+        chainId,
+      });
+      setEscrows(await fetchEscrows());
+    } catch (err) {
+      console.error(err);
+      // extract short message
+      const [msg] = err.message.match(/.+(?=\()/)
+      setErrMsg(msg ?? err.message);
+    }
   }
 
   return (
     <>
       <div className="contract">
+        <div>
+          <h3>Account: {account}</h3>
+          <h4>Chain ID: {chainId}</h4>
+        </div>
         <h1> New Contract </h1>
         <label>
           Arbiter Address
-          <input type="text" id="arbiter" />
+          <input
+            type="text"
+            id="arbiter"
+            defaultValue="0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+          />
         </label>
 
         <label>
           Beneficiary Address
-          <input type="text" id="beneficiary" />
+          <input
+            type="text"
+            id="beneficiary"
+            defaultValue="0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+          />
         </label>
 
         <label>
-          Deposit Amount (in Wei)
-          <input type="text" id="wei" />
+          Deposit Amount (ETH)
+          <input type="text" id="eth" />
         </label>
 
         <div
@@ -83,6 +100,7 @@ function App() {
         >
           Deploy
         </div>
+        {errMsg && <h3>{errMsg}</h3>}
       </div>
 
       <div className="existing-contracts">

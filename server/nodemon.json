@@ -1,0 +1,9 @@
+{
+  "verbose": true,
+  "watch": [
+    "src"
+  ],
+  "execMap": {
+    "ts": "ts-node"
+  }
+}

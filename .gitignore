@@ -1,6 +1,3 @@
-app/dist
-app/artifacts
-cache
+.vscode
 node_modules
-artifacts
-*.bck
+dist
